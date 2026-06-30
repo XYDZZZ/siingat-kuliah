@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Pengingat Jadwal Kuliah</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="tema-default">
+
+  <!-- Aplikasi Kontainer Utama -->
+  <div id="app-container">
+    
+    <!-- HEADER -->
+    <header class="app-header" style="display: none;">
+      <div class="logo-area">
+        <i class="fa-solid fa-bell-ring logo-icon"></i>
+        <span class="logo-text">SiIngat <span class="logo-sub">Kuliah</span></span>
+      </div>
+      <div class="user-status-area">
+        <span id="role-badge" class="badge">Peran</span>
+        <span id="user-display-name">Nama Pengguna</span>
+        <button id="btn-ganti-tema" class="btn-icon" title="Ubah Tema Warna"><i class="fa-solid fa-palette"></i></button>
+        <button id="btn-keluar" class="btn-action btn-danger-outline"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+      </div>
+    </header>
+
+    <!-- AREA UTAMA -->
+    <main class="app-main">
+      
+      <!-- ========================================== -->
+      <!-- SECTION: AUTHENTICATION (MASUK & REGISTRASI) -->
+      <!-- ========================================== -->
+      <section id="section-auth" class="auth-card-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1 class="auth-title">SiIngat Kuliah</h1>
+            <p class="auth-subtitle">Sistem Pengingat Jadwal Kuliah Otomatis via WhatsApp</p>
+          </div>
+          
+          <!-- Tab Auth -->
+          <div class="auth-tabs">
+            <button id="tab-masuk" class="auth-tab-btn active" onclick="switchAuthTab('masuk')">Masuk</button>
+            <button id="tab-daftar" class="auth-tab-btn" onclick="switchAuthTab('daftar')">Daftar</button>
+          </div>
+
+          <!-- Form Masuk -->
+          <div id="form-masuk-container" class="auth-form-content">
+            <form id="form-masuk" onsubmit="handleMasuk(event)">
+              <div class="form-group">
+                <label for="masuk-whatsapp"><i class="fa-brands fa-whatsapp"></i> Nomor WhatsApp</label>
+                <input type="text" id="masuk-whatsapp" placeholder="Contoh: 081234567890" required>
+                <small class="form-help">Masukkan nomor WhatsApp terdaftar Anda.</small>
+              </div>
+              <div class="form-group">
+                <label for="masuk-sandi"><i class="fa-solid fa-lock"></i> Kata Sandi</label>
+                <input type="password" id="masuk-sandi" placeholder="••••••••" required>
+              </div>
+              <button type="submit" class="btn-submit"><i class="fa-solid fa-right-to-bracket"></i> Masuk Sekarang</button>
+            </form>
+          </div>
+
+          <!-- Form Daftar -->
+          <div id="form-daftar-container" class="auth-form-content" style="display: none;">
+            
+            <!-- Langkah 1: Input Data & Kirim OTP -->
+            <form id="form-daftar-step1" onsubmit="handleKirimOTP(event)">
+              <div class="form-group">
+                <label for="daftar-nama"><i class="fa-solid fa-user"></i> Nama Lengkap</label>
+                <input type="text" id="daftar-nama" placeholder="Masukkan nama lengkap Anda" required>
+              </div>
+              <div class="form-group">
+                <label for="daftar-whatsapp"><i class="fa-brands fa-whatsapp"></i> Nomor WhatsApp</label>
+                <input type="text" id="daftar-whatsapp" placeholder="Contoh: 081234567890" required>
+                <small class="form-help">Penting! Gunakan nomor WhatsApp aktif Anda untuk notifikasi.</small>
+              </div>
+              <div class="form-group">
+                <label for="daftar-sandi"><i class="fa-solid fa-lock"></i> Kata Sandi</label>
+                <input type="password" id="daftar-sandi" placeholder="Buat kata sandi minimal 6 karakter" required minlength="6">
+              </div>
+              <div class="form-group">
+                <label><i class="fa-solid fa-users-gear"></i> Peran Akun</label>
+                <div class="role-selector-grid">
+                  <label class="role-card-option">
+                    <input type="radio" name="daftar-peran" value="mahasiswa" checked>
+                    <div class="role-card-inner">
+                      <i class="fa-solid fa-graduation-cap"></i>
+                      <span>Mahasiswa</span>
+                    </div>
+                  </label>
+                  <label class="role-card-option">
+                    <input type="radio" name="daftar-peran" value="dosen">
+                    <div class="role-card-inner">
+                      <i class="fa-solid fa-chalkboard-user"></i>
+                      <span>Dosen</span>
+                    </div>
+                  </label>
+                  <label class="role-card-option">
+                    <input type="radio" name="daftar-peran" value="admin">
+                    <div class="role-card-inner">
+                      <i class="fa-solid fa-user-shield"></i>
+                      <span>Admin</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <button type="submit" id="btn-kirim-otp" class="btn-submit"><i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP</button>
+            </form>
+
+            <!-- Langkah 2: Verifikasi OTP (Tersembunyi Awal) -->
+            <div id="daftar-step2-verification" class="verification-step-box" style="display: none;">
+              <div class="verification-header">
+                <i class="fa-solid fa-shield-halved verification-icon"></i>
+                <h3>Verifikasi Nomor WhatsApp</h3>
+                <p>Kami telah mengirimkan kode OTP ke nomor <strong id="display-verification-phone">0812xxx</strong> via WhatsApp.</p>
+              </div>
+              
+              <!-- Indikator Monitoring Otomatis -->
+              <div class="auto-otp-loader">
+                <div class="spinner-small"></div>
+                <span>Menunggu pesan masuk di simulator WhatsApp... <strong class="text-success">OTP Akan Terisi Otomatis!</strong></span>
+              </div>
+
+              <form id="form-daftar-step2" onsubmit="handleVerifikasiOTP(event)">
+                <div class="form-group">
+                  <label for="daftar-otp">Masukkan 6 Digit Kode OTP</label>
+                  <input type="text" id="daftar-otp" class="otp-input-field" placeholder="000000" maxlength="6" required autocomplete="off">
+                </div>
+                <div class="action-buttons-group">
+                  <button type="button" class="btn-action btn-secondary" onclick="resetDaftarForm()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                  <button type="submit" class="btn-action btn-primary"><i class="fa-solid fa-circle-check"></i> Verifikasi Akun</button>
+                </div>
+              </form>
+            </div>
+            
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION: MAHASISWA DASHBOARD -->
+      <!-- ========================================== -->
+      <section id="section-mahasiswa" class="dashboard-section" style="display: none;">
+        <div class="dashboard-grid">
+          
+          <!-- Sisi Kiri: Profil & Ambil Jadwal -->
+          <div class="dashboard-sidebar-col">
+            <!-- Card Profil Mahasiswa -->
+            <div class="glass-card profile-card">
+              <div class="profile-header">
+                <div class="avatar"><i class="fa-solid fa-graduation-cap"></i></div>
+                <h2 id="mhs-profile-name">Nama Mahasiswa</h2>
+                <p id="mhs-profile-phone"><i class="fa-brands fa-whatsapp"></i> 0812xx</p>
+              </div>
+              <div class="profile-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Status</span>
+                  <span class="meta-val text-success">Aktif & Terverifikasi</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Ambil Jadwal -->
+            <div class="glass-card enrollment-card">
+              <h3><i class="fa-solid fa-plus-circle"></i> Ambil Jadwal Kuliah</h3>
+              <p class="card-desc">Masukkan Kode Mata Kuliah (Kode MK) yang diberikan oleh Dosen Anda untuk menambahkan jadwal secara otomatis.</p>
+              <form id="form-ambil-jadwal" onsubmit="handleAmbilJadwal(event)">
+                <div class="form-group">
+                  <label for="ambil-kode-mk">Kode Mata Kuliah (Kode MK)</label>
+                  <input type="text" id="ambil-kode-mk" placeholder="Contoh: MK-PWE-101" required>
+                </div>
+                <button type="submit" class="btn-submit btn-accent"><i class="fa-solid fa-calendar-plus"></i> Ikuti Mata Kuliah</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Sisi Kanan: Jadwal Kuliah Mahasiswa -->
+          <div class="dashboard-main-col">
+            <div class="glass-card schedule-card">
+              <div class="card-header-flex">
+                <h3><i class="fa-solid fa-calendar-days"></i> Jadwal Kuliah Saya</h3>
+                <span class="schedule-count-badge" id="mhs-schedule-count">0 Mata Kuliah</span>
+              </div>
+              
+              <div id="mhs-schedule-empty" class="empty-state">
+                <i class="fa-solid fa-calendar-xmark empty-icon"></i>
+                <h4>Belum Ada Jadwal Kuliah</h4>
+                <p>Anda belum mengambil mata kuliah apa pun. Silakan masukkan Kode MK di sebelah kiri untuk menambahkan jadwal kuliah Anda.</p>
+              </div>
+
+              <div id="mhs-schedule-list" class="schedule-list" style="display: none;">
+                <!-- Jadwal mahasiswa di-render dinamis di sini -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION: DOSEN DASHBOARD -->
+      <!-- ========================================== -->
+      <section id="section-dosen" class="dashboard-section" style="display: none;">
+        <div class="dashboard-grid">
+          
+          <!-- Sisi Kiri: Profil & Tambah Matakuliah -->
+          <div class="dashboard-sidebar-col">
+            <!-- Card Profil Dosen -->
+            <div class="glass-card profile-card">
+              <div class="profile-header">
+                <div class="avatar"><i class="fa-solid fa-chalkboard-user"></i></div>
+                <h2 id="dosen-profile-name"></h2>
+                <p id="dosen-profile-phone"><i class="fa-brands fa-whatsapp"></i> 0812xx</p>
+              </div>
+              <div class="profile-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Jabatan</span>
+                  <span class="meta-val">Dosen Pengampu</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Tambah Mata Kuliah -->
+            <div class="glass-card add-course-card">
+              <h3><i class="fa-solid fa-circle-plus"></i> Buat Mata Kuliah Baru</h3>
+              <p class="card-desc">Buat mata kuliah baru dan atur jadwalnya. Kode MK unik akan dibuat secara otomatis untuk dibagikan kepada mahasiswa.</p>
+              <form id="form-tambah-mk" onsubmit="handleTambahMk(event)">
+                <div class="form-group">
+                  <label for="tambah-nama-mk">Nama Mata Kuliah</label>
+                  <input type="text" id="tambah-nama-mk" placeholder="Contoh: Pemrograman Web" required>
+                </div>
+                <div class="form-row">
+                  <div class="form-group col-6">
+                    <label for="tambah-hari">Hari</label>
+                    <select id="tambah-hari" required>
+                      <option value="Senin">Senin</option>
+                      <option value="Selasa">Selasa</option>
+                      <option value="Rabu">Rabu</option>
+                      <option value="Kamis">Kamis</option>
+                      <option value="Jumat">Jumat</option>
+                      <option value="Sabtu">Sabtu</option>
+                      <option value="Minggu">Minggu</option>
+                    </select>
+                  </div>
+                  <div class="form-group col-6">
+                    <label for="tambah-ruangan">Ruangan</label>
+                    <input type="text" id="tambah-ruangan" placeholder="Lab Komputer 3" required>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group col-6">
+                    <label for="tambah-jam-mulai">Jam Mulai</label>
+                    <input type="time" id="tambah-jam-mulai" required>
+                  </div>
+                  <div class="form-group col-6">
+                    <label for="tambah-jam-selesai">Jam Selesai</label>
+                    <input type="time" id="tambah-jam-selesai" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="tambah-kode-kustom">Kode MK Kustom (Opsional)</label>
+                  <input type="text" id="tambah-kode-kustom" placeholder="Biarkan kosong untuk otomatis">
+                </div>
+                <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Terbitkan Kelas</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Sisi Rangan: Daftar Kelas yang Diampu Dosen -->
+          <div class="dashboard-main-col">
+            <div class="glass-card schedule-card">
+              <div class="card-header-flex">
+                <h3><i class="fa-solid fa-clipboard-list"></i> Kelas yang Saya Ampu</h3>
+                <span class="schedule-count-badge" id="dosen-class-count">0 Kelas</span>
+              </div>
+
+              <div id="dosen-class-empty" class="empty-state">
+                <i class="fa-solid fa-book-open-reader empty-icon"></i>
+                <h4>Belum Ada Kelas yang Dibuat</h4>
+                <p>Dosen belum menerbitkan kelas perkuliahan. Silakan buat kelas baru menggunakan form di sebelah kiri.</p>
+              </div>
+
+              <div id="dosen-class-list" class="class-list" style="display: none;">
+                <!-- Kelas dosen di-render dinamis di sini -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- SECTION: ADMIN DASHBOARD -->
+      <!-- ========================================== -->
+      <section id="section-admin" class="dashboard-section" style="display: none;">
+        <div class="dashboard-grid admin-layout">
+          
+          <!-- Statistik Ringkas (Atas) -->
+          <div class="admin-stats-row">
+            <div class="stat-card glass-card border-cyan">
+              <div class="stat-icon cyan"><i class="fa-solid fa-users"></i></div>
+              <div class="stat-info">
+                <h4 id="stat-total-pengguna">0</h4>
+                <p>Total Pengguna</p>
+              </div>
+            </div>
+            <div class="stat-card glass-card border-green">
+              <div class="stat-icon green"><i class="fa-solid fa-book"></i></div>
+              <div class="stat-info">
+                <h4 id="stat-total-mk">0</h4>
+                <p>Total Mata Kuliah</p>
+              </div>
+            </div>
+            <div class="stat-card glass-card border-orange">
+              <div class="stat-icon orange"><i class="fa-solid fa-bell"></i></div>
+              <div class="stat-info">
+                <h4 id="stat-total-pengingat">0</h4>
+                <p>Notifikasi Terkirim</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Konten Utama Admin -->
+          <div class="admin-main-grid">
+            <!-- Kolom Kiri: Manajemen Pengguna -->
+            <div class="glass-card admin-panel">
+              <h3><i class="fa-solid fa-users-gear"></i> Daftar Pengguna Sistem</h3>
+              <div class="table-responsive">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>No. WhatsApp</th>
+                      <th>Peran</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-table-body">
+                    <!-- Data pengguna di-render dinamis -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Kolom Kanan: Semua Jadwal Mata Kuliah -->
+            <div class="glass-card admin-panel">
+              <h3><i class="fa-solid fa-calendar-week"></i> Semua Jadwal Kuliah di Kampus</h3>
+              <div class="table-responsive">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Kode MK</th>
+                      <th>Mata Kuliah</th>
+                      <th>Dosen</th>
+                      <th>Jadwal</th>
+                      <th>Mhs</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-courses-table-body">
+                    <!-- Data seluruh mata kuliah di-render dinamis -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- WIDGET: FLOATING WHATSAPP SMARTPHONE SIMULATOR -->
+    <!-- ========================================== -->
+    <div id="wa-simulator-widget" class="wa-phone-container minimized">
+      
+      <!-- Header Simulator (Bentuk atas HP) -->
+      <div class="wa-phone-header" onclick="toggleSimulator()">
+        <div class="phone-speaker-camera">
+          <span class="camera"></span>
+          <span class="speaker"></span>
+        </div>
+        <div class="phone-info-bar">
+          <div class="wa-chat-profile">
+            <div class="wa-avatar"><i class="fa-brands fa-whatsapp"></i></div>
+            <div class="wa-profile-info">
+              <h4 class="phone-title">Simulator WhatsApp</h4>
+              <p class="phone-subtitle" id="wa-phone-subtitle">Hubungkan nomor Anda...</p>
+            </div>
+          </div>
+          <div class="phone-controls">
+            <span class="badge-unread-count" id="wa-unread-badge" style="display: none;">0</span>
+            <i id="simulator-toggle-icon" class="fa-solid fa-chevron-up"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layar Simulator -->
+      <div class="wa-phone-screen">
+        <!-- Area Chat -->
+        <div class="wa-chat-body" id="wa-chat-messages-body">
+          <div class="wa-system-message">
+            Sistem simulasi WhatsApp aktif. Masukkan nomor WhatsApp Anda pada form pendaftaran atau masuk untuk melihat pesan masuk secara otomatis.
+          </div>
+        </div>
+
+        <!-- Footer Input Chat (Hanya visualisasi/pengetesan) -->
+        <div class="wa-chat-footer">
+          <input type="text" id="wa-chat-input-test" placeholder="Ketik pesan uji coba..." onkeydown="if(event.key === 'Enter') kirimPesanManualSimulator()">
+          <button id="wa-chat-send-test" onclick="kirimPesanManualSimulator()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Modal Pilih Tema UI (Dinamis) -->
+  <div id="modal-tema" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Pilih Tema Warna Antarmuka</h3>
+        <button class="btn-close-modal" onclick="tutupModalTema()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="themes-grid">
+          
+          <div class="theme-card-option" onclick="pilihTemaAplikasi('default')">
+            <div class="theme-preview bg-default"></div>
+            <span>Tema Sistem</span>
+          </div>
+          
+          <div class="theme-card-option" onclick="pilihTemaAplikasi('mahasiswa')">
+            <div class="theme-preview bg-mahasiswa"></div>
+            <span>Glassmorphism Ungu-Pink</span>
+          </div>
+
+          <div class="theme-card-option" onclick="pilihTemaAplikasi('dosen')">
+            <div class="theme-preview bg-dosen"></div>
+            <span>Deep Navy & Emerald</span>
+          </div>
+
+          <div class="theme-card-option" onclick="pilihTemaAplikasi('admin')">
+            <div class="theme-preview bg-admin"></div>
+            <span>Slate Charcoal & Neon Cyan</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pustaka JavaScript Utama -->
+  <script src="app.js"></script>
+</body>
+</html>

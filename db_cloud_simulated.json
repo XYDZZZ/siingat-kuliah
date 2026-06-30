@@ -1,0 +1,113 @@
+{
+  "pengguna": [
+    {
+      "id": 1,
+      "no_whatsapp": "081234567890",
+      "nama": "Administrator Utama",
+      "hash_kata_sandi": "$2a$10$T1K7f4b3M2ZJ6C3eG5X5uOmQyMpHd285m/KzR6D2qN2l5D3qN.wWq",
+      "peran": "admin",
+      "kode_otp": null,
+      "otp_kedaluwarsa": null,
+      "apakah_diverifikasi": true,
+      "pilihan_tema": "admin"
+    },
+    {
+      "id": 2,
+      "no_whatsapp": "085701869512",
+      "nama": "hanz",
+      "hash_kata_sandi": "$2a$10$TxQvmZMDEongk3pC4FgxDeqO.YVFKd3Vuriw8QSxx/LyKU2JhIr5e",
+      "peran": "mahasiswa",
+      "kode_otp": null,
+      "otp_kedaluwarsa": null,
+      "apakah_diverifikasi": true,
+      "pilihan_tema": "mahasiswa"
+    },
+    {
+      "id": 3,
+      "no_whatsapp": "081345678912",
+      "nama": "budi gaming",
+      "hash_kata_sandi": "$2a$10$PZ/TiTSFjWH01NS8g61fI.oWd/.Lvb/vc/a/mk/vq54q99JyTod2i",
+      "peran": "dosen",
+      "kode_otp": null,
+      "otp_kedaluwarsa": null,
+      "apakah_diverifikasi": true,
+      "pilihan_tema": "admin"
+    },
+    {
+      "id": 4,
+      "no_whatsapp": "081234567891",
+      "nama": "andi gimang",
+      "hash_kata_sandi": "$2a$10$jsIILHScDH8d1EmzGKw3I.mS8uD8VGYXtH2CA3xkCRBAZoZ8JQ.LW",
+      "peran": "admin",
+      "kode_otp": null,
+      "otp_kedaluwarsa": null,
+      "apakah_diverifikasi": true,
+      "pilihan_tema": "admin"
+    }
+  ],
+  "matakuliah": [
+    {
+      "id": 1,
+      "kode_mk": "MK-R-979",
+      "nama_mk": "rpl",
+      "id_dosen": 3,
+      "hari": "Kamis",
+      "jam_mulai": "14:05",
+      "jam_selesai": "15:00",
+      "ruangan": "lab komputer"
+    }
+  ],
+  "pendaftaran_mk": [
+    {
+      "id_mahasiswa": 2,
+      "id_matakuliah": 1
+    }
+  ],
+  "pengingat": [
+    {
+      "id": 1,
+      "id_matakuliah": null,
+      "no_whatsapp": "085701869512",
+      "pesan": "Halo! Kode OTP Anda untuk registrasi Pengingat Jadwal Kuliah adalah: *923016*. Berlaku selama 5 menit. Tolong jangan sebarkan kode ini kepada siapa pun.",
+      "status": "sukses",
+      "tipe": "otp",
+      "dikirim_pada": "2026-06-25T06:41:13.122Z"
+    },
+    {
+      "id": 2,
+      "id_matakuliah": null,
+      "no_whatsapp": "081345678912",
+      "pesan": "Halo! Kode OTP Anda untuk registrasi Pengingat Jadwal Kuliah adalah: *817588*. Berlaku selama 5 menit. Tolong jangan sebarkan kode ini kepada siapa pun.",
+      "status": "sukses",
+      "tipe": "otp",
+      "dikirim_pada": "2026-06-25T06:46:15.871Z"
+    },
+    {
+      "id": 3,
+      "id_matakuliah": null,
+      "no_whatsapp": "081345678912",
+      "pesan": "⚠️ *PENGINGAT JADWAL KULIAH* ⚠️\n\nHalo *budi gaming*,\n\nMata kuliah berikut akan dimulai dalam *10 menit*:\n\n📚 *Mata Kuliah*: rpl (MK-R-979)\n⏰ *Jam*: 14:05\n🏫 *Ruangan*: lab komputer\n👤 *Dosen Pengampu*: budi gaming\n\nMohon segera bersiap-siap untuk mengikuti perkuliahan. Terima kasih!",
+      "status": "sukses",
+      "tipe": "notifikasi_jadwal",
+      "dikirim_pada": "2026-06-25T06:55:00.959Z"
+    },
+    {
+      "id": 4,
+      "id_matakuliah": null,
+      "no_whatsapp": "085701869512",
+      "pesan": "⚠️ *PENGINGAT JADWAL KULIAH* ⚠️\n\nHalo *hanz*,\n\nMata kuliah berikut akan dimulai dalam *10 menit*:\n\n📚 *Mata Kuliah*: rpl (MK-R-979)\n⏰ *Jam*: 14:05\n🏫 *Ruangan*: lab komputer\n👤 *Dosen Pengampu*: budi gaming\n\nMohon segera bersiap-siap untuk mengikuti perkuliahan. Terima kasih!",
+      "status": "sukses",
+      "tipe": "notifikasi_jadwal",
+      "dikirim_pada": "2026-06-25T06:55:00.962Z"
+    },
+    {
+      "id": 5,
+      "id_matakuliah": null,
+      "no_whatsapp": "081234567891",
+      "pesan": "Halo! Kode OTP Anda untuk registrasi Pengingat Jadwal Kuliah adalah: *966823*. Berlaku selama 5 menit. Tolong jangan sebarkan kode ini kepada siapa pun.",
+      "status": "sukses",
+      "tipe": "otp",
+      "dikirim_pada": "2026-06-29T06:45:53.999Z"
+    }
+  ]
+}

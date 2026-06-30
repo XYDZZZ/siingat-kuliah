@@ -1,0 +1,21 @@
+# Render Blueprint Configuration
+# Dokumentasi: https://render.com/docs/blueprint-spec
+# File ini bikin Render auto-detect setting yang benar saat deploy.
+
+services:
+  - type: web
+    name: siingat-kuliah
+    runtime: node
+    plan: free
+    # Render otomatis set PORT environment variable. server.js sudah baca process.env.PORT.
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.1
+      # DATABASE_URL TIDAK ditulis di sini (akan di-set manual di dashboard Render
+      # lewat Environment tab supaya credential tidak ter-expose di git).
+      - key: DATABASE_URL
+        sync: false
