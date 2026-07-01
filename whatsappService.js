@@ -1,6 +1,9 @@
 const db = require('./db');
 
-// Penyimpanan in-memory sementara untuk pesan simulasi WhatsApp agar bisa diakses cepat oleh frontend simulator
+// Penyimpanan in-memory sementara untuk pesan simulasi WhatsApp.
+// Di mode standalone (lokal/Render/Glitch) ini utama dipakai untuk akses cepat.
+// Di mode serverless (Vercel) ini hanya cache sementara per-instance;
+// pembacaan tetap di-fallback ke database cloud supaya konsisten lintas instance.
 let listPesanSimulasi = [];
 
 /**
@@ -36,6 +39,7 @@ async function kirimWhatsApp(noWhatsapp, pesan, tipe, idMatakuliah = null) {
   }
 
   // Simpan ke database cloud PostgreSQL agar data tersinkronisasi
+  // dan tetap bisa dibaca kembali bahkan di environment serverless (Vercel)
   try {
     await db.query(
       `INSERT INTO pengingat (id_matakuliah, no_whatsapp, pesan, status, tipe)
@@ -66,33 +70,100 @@ async function kirimPengingatJadwal(noWhatsapp, namaPenerima, namaMk, jamMulai, 
 }
 
 /**
- * Mendapatkan OTP terbaru untuk nomor WhatsApp tertentu (digunakan oleh auto-fill frontend)
+ * Membersihkan nomor WhatsApp dari karakter non-digit
  */
-function dapatkanOtpTerbaru(noWhatsapp) {
-  // Bersihkan noWhatsapp dari karakter non-digit untuk pencocokan yang aman
-  const cleanPhone = noWhatsapp.replace(/\D/g, '');
-  const pesanOtp = listPesanSimulasi.find(p => 
-    p.tipe === 'otp' && 
-    p.no_whatsapp.replace(/\D/g, '') === cleanPhone
-  );
+function normalisasiNoWa(no) {
+  return (no || '').toString().replace(/\D/g, '');
+}
 
-  if (pesanOtp) {
-    // Cari kode OTP 6 digit dari teks pesan
-    const match = pesanOtp.pesan.match(/\*(\d{6})\*/);
-    if (match) {
-      return match[1];
-    }
+/**
+ * Mendapatkan OTP terbaru untuk nomor WhatsApp tertentu (digunakan oleh auto-fill frontend)
+ * Strategi: cek in-memory dulu (cepat), kalau kosong fallback ke database.
+ */
+async function dapatkanOtpTerbaru(noWhatsapp) {
+  const cleanPhone = normalisasiNoWa(noWhatsapp);
+
+  // 1. Cek in-memory dulu
+  const pesanOtpMemory = listPesanSimulasi.find(p =>
+    p.tipe === 'otp' &&
+    normalisasiNoWa(p.no_whatsapp) === cleanPhone
+  );
+  if (pesanOtpMemory) {
+    const match = pesanOtpMemory.pesan.match(/\*(\d{6})\*/);
+    if (match) return match[1];
   }
+
+  // 2. Fallback ke database (penting untuk Vercel yang stateless)
+  try {
+    const hasil = await db.query(
+      `SELECT pesan FROM pengingat
+       WHERE tipe = 'otp' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(no_whatsapp, '+', ''), '-', ''), ' ', ''), '(', ''), ')', '') LIKE '%' || $1
+       ORDER BY dikirim_pada DESC
+       LIMIT 1`,
+      [cleanPhone]
+    );
+    if (hasil.rows.length > 0) {
+      const match = hasil.rows[0].pesan.match(/\*(\d{6})\*/);
+      if (match) return match[1];
+    }
+  } catch (e) {
+    console.error('Gagal mengambil OTP dari database:', e);
+  }
+
   return null;
 }
 
 /**
  * Mendapatkan semua pesan simulasi untuk ditampilkan di HP Simulator frontend
+ * Strategi: cek in-memory dulu, kalau kosong ambil dari database.
  */
-function dapatkanSemuaPesanSimulasi(noWhatsapp) {
-  if (!noWhatsapp) return listPesanSimulasi;
-  const cleanPhone = noWhatsapp.replace(/\D/g, '');
-  return listPesanSimulasi.filter(p => p.no_whatsapp.replace(/\D/g, '') === cleanPhone);
+async function dapatkanSemuaPesanSimulasi(noWhatsapp) {
+  // 1. Kalau tidak ada nomor spesifik, ambil semua dari memory
+  if (!noWhatsapp) {
+    if (listPesanSimulasi.length > 0) return listPesanSimulasi;
+    // Fallback DB
+    try {
+      const hasil = await db.query(
+        `SELECT no_whatsapp, pesan, tipe, dikirim_pada FROM pengingat
+         ORDER BY dikirim_pada DESC LIMIT 100`
+      );
+      return hasil.rows.map(r => ({
+        no_whatsapp: r.no_whatsapp,
+        pesan: r.pesan,
+        tipe: r.tipe,
+        dikirim_pada: r.dikirim_pada
+      }));
+    } catch (e) {
+      console.error('Gagal ambil pesan dari DB:', e);
+      return [];
+    }
+  }
+
+  // 2. Ada nomor spesifik
+  const cleanPhone = normalisasiNoWa(noWhatsapp);
+  const dariMemory = listPesanSimulasi.filter(p =>
+    normalisasiNoWa(p.no_whatsapp) === cleanPhone
+  );
+  if (dariMemory.length > 0) return dariMemory;
+
+  // 3. Fallback DB
+  try {
+    const hasil = await db.query(
+      `SELECT no_whatsapp, pesan, tipe, dikirim_pada FROM pengingat
+       WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(no_whatsapp, '+', ''), '-', ''), ' ', ''), '(', ''), ')', '') LIKE '%' || $1
+       ORDER BY dikirim_pada DESC LIMIT 100`,
+      [cleanPhone]
+    );
+    return hasil.rows.map(r => ({
+      no_whatsapp: r.no_whatsapp,
+      pesan: r.pesan,
+      tipe: r.tipe,
+      dikirim_pada: r.dikirim_pada
+    }));
+  } catch (e) {
+    console.error('Gagal ambil pesan dari DB:', e);
+    return [];
+  }
 }
 
 module.exports = {

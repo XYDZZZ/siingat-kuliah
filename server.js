@@ -1,16 +1,30 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const cron = require('node-cron');
 const db = require('./db');
 const waService = require('./whatsappService');
+
+// Deteksi environment: Vercel (serverless) vs lokal/standalone
+const isVercel = !!process.env.VERCEL;
+const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+// node-cron hanya dipakai di mode standalone (lokal/Render/Glitch).
+// Di Vercel (serverless), cron dijalankan via endpoint /api/cron yang dipicu
+// eksternal (cron-job.org) setiap menit.
+let cron = null;
+if (!isServerless) {
+  try { cron = require('node-cron'); } catch (e) { /* optional dep */ }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Melayani file statis HTML/CSS/JS dari folder 'public'
+// Static file serving: di Vercel otomatis di-handle, di lokal pakai express.static
+if (!isVercel) {
+  app.use(express.static('public'));
+}
 
 // Middleware sederhana untuk autentikasi token (menggunakan Base64 string dari id pengguna untuk demo tanpa JWT kompleks)
 const authMiddleware = async (req, res, next) => {
@@ -462,24 +476,34 @@ app.get('/api/admin/pengguna', authMiddleware, async (req, res) => {
 // ==========================================
 
 // Endpoint untuk memantau OTP secara otomatis (Auto-pull OTP)
-app.get('/api/simulasi/otp-terbaru', (req, res) => {
+app.get('/api/simulasi/otp-terbaru', async (req, res) => {
   const { no_whatsapp } = req.query;
   if (!no_whatsapp) {
     return res.status(400).json({ pesan: 'Parameter no_whatsapp diperlukan.' });
   }
 
-  const otp = waService.dapatkanOtpTerbaru(no_whatsapp);
-  if (otp) {
-    return res.json({ sukses: true, otp: otp });
+  try {
+    const otp = await waService.dapatkanOtpTerbaru(no_whatsapp);
+    if (otp) {
+      return res.json({ sukses: true, otp: otp });
+    }
+    res.json({ sukses: false, pesan: 'Belum ada OTP baru.' });
+  } catch (e) {
+    console.error('Error ambil OTP terbaru:', e);
+    res.status(500).json({ sukses: false, pesan: 'Gagal mengambil OTP.' });
   }
-  res.json({ sukses: false, pesan: 'Belum ada OTP baru.' });
 });
 
 // Mendapatkan pesan WhatsApp terkirim untuk nomor tertentu (HP virtual)
-app.get('/api/simulasi/pesan', (req, res) => {
+app.get('/api/simulasi/pesan', async (req, res) => {
   const { no_whatsapp } = req.query;
-  const pesan = waService.dapatkanSemuaPesanSimulasi(no_whatsapp);
-  res.json(pesan);
+  try {
+    const pesan = await waService.dapatkanSemuaPesanSimulasi(no_whatsapp);
+    res.json(pesan);
+  } catch (e) {
+    console.error('Error ambil pesan simulasi:', e);
+    res.status(500).json([]);
+  }
 });
 
 // Mengirim pesan secara manual via simulator (untuk pengetesan admin)
@@ -526,10 +550,11 @@ async function periksaDanKirimPengingat() {
     );
 
     if (mkHasil.rows.length === 0) {
-      return; // Tidak ada kelas 10 menit lagi
+      return { ditemukan: 0, dikirim: 0 };
     }
 
     const tglHariIni = sekarang.toISOString().split('T')[0]; // Format 'YYYY-MM-DD'
+    let totalDikirim = 0;
 
     for (const mk of mkHasil.rows) {
       console.log(`[Scheduler] Ditemukan mata kuliah: ${mk.nama_mk} (${mk.kode_mk})`);
@@ -558,6 +583,7 @@ async function periksaDanKirimPengingat() {
         mk.kode_mk,
         mk.nama_dosen
       );
+      totalDikirim++;
 
       // B. Ambil semua mahasiswa yang terdaftar di kelas ini
       const mhsHasil = await db.query(
@@ -581,33 +607,75 @@ async function periksaDanKirimPengingat() {
           mk.kode_mk,
           mk.nama_dosen
         );
+        totalDikirim++;
       }
     }
+    return { ditemukan: mkHasil.rows.length, dikirim: totalDikirim };
   } catch (error) {
     console.error('Error saat menjalankan scheduler pengingat:', error);
+    return { ditemukan: 0, dikirim: 0, error: error.message };
   }
 }
 
-// Jalankan pengecekan setiap menit
-// Menggunakan cron: run setiap menit
-cron.schedule('* * * * *', () => {
-  periksaDanKirimPengingat();
+// Jalankan pengecekan setiap menit HANYA di mode standalone (bukan Vercel)
+// Di Vercel, scheduler dipicu via /api/cron oleh cron-job.org
+if (!isServerless && cron) {
+  cron.schedule('* * * * *', () => {
+    periksaDanKirimPengingat();
+  });
+}
+
+// ==========================================
+// 7. ENDPOINT CRON (UNTUK VERCEL)
+// Dipanggil oleh cron-job.org setiap menit untuk memicu scheduler
+// ==========================================
+app.get('/api/cron/pengingat', async (req, res) => {
+  // Proteksi sederhana: butuh secret token supaya tidak bisa di-trigger sembarang
+  const token = req.query.token || req.headers['x-cron-token'];
+  if (process.env.CRON_SECRET && token !== process.env.CRON_SECRET) {
+    return res.status(403).json({ pesan: 'Akses ditolak. Token cron tidak valid.' });
+  }
+  try {
+    const hasil = await periksaDanKirimPengingat();
+    res.json({ sukses: true, waktu: new Date().toISOString(), hasil });
+  } catch (error) {
+    res.status(500).json({ sukses: false, error: error.message });
+  }
+});
+
+// Endpoint health check untuk monitoring
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: isVercel ? 'vercel' : 'standalone',
+    database_mode: db.apakahSimulator() ? 'simulator' : 'cloud'
+  });
 });
 
 // ==========================================
 // INISIALISASI SERVER & DATABASE
 // ==========================================
+// Di Vercel (serverless), kita tidak listen port — biarkan Vercel handle.
+// Inisialisasi DB tetap dijalankan saat module load (cold start).
 db.inisialisasiDatabase()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`==================================================`);
-      console.log(`Server web Pengingat Jadwal Kuliah berjalan di:`);
-      console.log(`👉 http://localhost:${PORT} (lokal) atau URL Render (produksi)`);
-      console.log(`   Port binding: 0.0.0.0:${PORT}`);
-      console.log(`==================================================`);
-    });
+    if (!isServerless) {
+      // Mode standalone (lokal/Render/Glitch): start HTTP server
+      app.listen(PORT, () => {
+        console.log(`==================================================`);
+        console.log(`Server web Pengingat Jadwal Kuliah berjalan di:`);
+        console.log(`👉 http://localhost:${PORT}`);
+        console.log(`==================================================`);
+      });
+    } else {
+      console.log('[Vercel/Serverless] Inisialisasi database selesai. Siap melayani request.');
+    }
   })
   .catch(err => {
-    console.error('Server gagal berjalan karena masalah database:', err);
-    process.exit(1);
+    console.error('Inisialisasi database gagal:', err);
+    // Di serverless tidak boleh process.exit, biarkan error ditangani per-request
   });
+
+// Export app supaya bisa dipakai sebagai serverless function (api/index.js)
+module.exports = app;
